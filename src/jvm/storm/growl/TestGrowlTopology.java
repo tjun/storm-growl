@@ -72,7 +72,7 @@ public class TestGrowlTopology {
 			String message = "Hello Growl!";
 			
 			_collector.emit(new Values(title, message));
-	        Utils.sleep(10000);
+	        Utils.sleep(5000);
 
 		}
 

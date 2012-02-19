@@ -30,11 +30,19 @@ public class GrowlBolt implements IBasicBolt
 	List<String> hosts 			= null;
 	int port 					= 0;
 	
-	/* use siticky notification or not. */
+	/* use sticky notification or not. */
 	boolean sticky 				= false;
 	/* notification priority */
 	int priority 				= 0;
 	String iconUrl				= null;
+	
+	/*
+	 * Growl Objects
+	 */
+	Application _application;
+	NotificationType _notificationType;
+	NotificationType[] _notificationTypes;
+	List<GrowlConnector> _growls;
 	
 
 	/* 
@@ -55,10 +63,24 @@ public class GrowlBolt implements IBasicBolt
     	priority = growlConf.priority;
     	sticky = growlConf.sticky;
     	iconUrl = growlConf.iconUrl;
+    	
     }    
-
+    /*
+     * (non-Javadoc)
+     * @see backtype.storm.topology.IBasicBolt#prepare(java.util.Map, backtype.storm.task.TopologyContext)
+     */
     @Override
-	public void prepare(Map stormConf, TopologyContext context) {		
+	public void prepare(Map stormConf, TopologyContext context) {
+    	_application = new Application(name);
+    	_notificationType = new NotificationType(notificationTypeId, name, iconUrl);
+    	_notificationTypes = new NotificationType[] { _notificationType};
+    	
+    	_growls = new ArrayList<GrowlConnector>();
+    	for(String host : hosts){
+    		GrowlConnector growl = new GrowlConnector(host, port);
+    		growl.register(_application, _notificationTypes);
+    		_growls.add(growl);
+    	}
 	}
     
     /*
@@ -76,17 +98,11 @@ public class GrowlBolt implements IBasicBolt
     	String message = tuple.getStringByField("message");
     	
     	
-		Application application = new Application(name);
-		NotificationType notificationType = new NotificationType(notificationTypeId, name, iconUrl);
-		NotificationType[] notificationTypes = new NotificationType[] { notificationType };
-		Notification notification = new Notification(application, notificationType, title, message);
+    	Notification notification = new Notification(_application, _notificationType, title, message);
 		notification.setPriority(priority);
 		notification.setSticky(sticky);
 		
-		for(String host : hosts){
-	    	GrowlConnector growl = new GrowlConnector(host, port);
-			growl.register(application, notificationTypes);	
-			
+		for(GrowlConnector growl : _growls){
 			growl.notify(notification);
 		}
 		collector.emit(new Values(title, message));
