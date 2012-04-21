@@ -29,13 +29,13 @@ public class GrowlBolt implements IBasicBolt
 	String notificationTypeId 	= "";
 	List<String> hosts 			= null;
 	int port 					= 0;
-	
+
 	/* use sticky notification or not. */
 	boolean sticky 				= false;
 	/* notification priority */
 	int priority 				= 0;
 	String iconUrl				= null;
-	
+
 	/*
 	 * Growl Objects
 	 */
@@ -43,15 +43,15 @@ public class GrowlBolt implements IBasicBolt
 	NotificationType _notificationType;
 	NotificationType[] _notificationTypes;
 	List<GrowlConnector> _growls;
-	
 
-	/* 
+
+	/*
 	 * Constructor
 	 */
     public GrowlBolt(GrowlConfig growlConf) {
     	name = growlConf.getName();
     	notificationTypeId = growlConf.getTypeId();
-    	
+
     	if(growlConf.hosts.isEmpty()){
     		LOG.warn("No host registered in GrowlConfig. Use \"localhost\".");
     		hosts = new ArrayList<String>();
@@ -63,18 +63,15 @@ public class GrowlBolt implements IBasicBolt
     	priority = growlConf.priority;
     	sticky = growlConf.sticky;
     	iconUrl = growlConf.iconUrl;
-    	
-    }    
-    /*
-     * (non-Javadoc)
-     * @see backtype.storm.topology.IBasicBolt#prepare(java.util.Map, backtype.storm.task.TopologyContext)
-     */
+
+    }
+
     @Override
 	public void prepare(Map stormConf, TopologyContext context) {
     	_application = new Application(name);
     	_notificationType = new NotificationType(notificationTypeId, name, iconUrl);
     	_notificationTypes = new NotificationType[] { _notificationType};
-    	
+
     	_growls = new ArrayList<GrowlConnector>();
     	for(String host : hosts){
     		GrowlConnector growl = new GrowlConnector(host, port);
@@ -82,26 +79,22 @@ public class GrowlBolt implements IBasicBolt
     		_growls.add(growl);
     	}
 	}
-    
-    /*
-     * (non-Javadoc)
-     * @see backtype.storm.topology.IBasicBolt#execute(backtype.storm.tuple.Tuple, backtype.storm.topology.BasicOutputCollector)
-     */
+
     public void execute(Tuple tuple, BasicOutputCollector collector) {
         /*
-         * tuple must contains Fields named "title", "message" and "iconURL".
+         * tuple must contains Fields named "title" and "message".
          * "title" is used for Growl Title
          * "message" is used for Growl Message
          */
-    	
+
     	String title = tuple.getStringByField("title");
     	String message = tuple.getStringByField("message");
-    	
-    	
+
+
     	Notification notification = new Notification(_application, _notificationType, title, message);
 		notification.setPriority(priority);
 		notification.setSticky(sticky);
-		
+
 		for(GrowlConnector growl : _growls){
 			growl.notify(notification);
 		}
@@ -113,13 +106,9 @@ public class GrowlBolt implements IBasicBolt
 	public void cleanup() {
 	}
 
-	/*
-	 * (non-Javadoc)
-	 * @see backtype.storm.topology.IComponent#declareOutputFields(backtype.storm.topology.OutputFieldsDeclarer)
-	 */
     public void declareOutputFields(OutputFieldsDeclarer declarer) {
         declarer.declare(new Fields("title", "message"));
     }
 
-	
+
 }
